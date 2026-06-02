@@ -4,369 +4,234 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Bingo 年度计划</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&display=swap');
 
-  :root {
-    --bg: #f7f5f0;
-    --surface: #ffffff;
-    --border: #e2ddd6;
-    --text: #1a1814;
-    --muted: #8c8880;
-    --hint: #c4bfb8;
-    --done-bg: #e8f5e9;
-    --done-border: #a5d6a7;
-    --done-text: #2e7d32;
-    --bingo-bg: #fff8e1;
-    --bingo-border: #ffe082;
-    --bingo-text: #e65100;
-    --free-bg: #f0edff;
-    --free-text: #5c35cc;
-    --accent: #1a1814;
-  }
+:root {
+  --bg: #080806;
+  --glow-face:  #fffaee;
+  --glow-warm:  #fdecc0;
+  --glow-mid:   #e8c878;
+  --glow-halo:  rgba(230,185,80,0.16);
+  --cell-off:   #111009;
+  --cell-border-off: #1c1a14;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+* { box-sizing:border-box; margin:0; padding:0;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-user-select:none; user-select:none; }
 
-  body {
-    font-family: 'Noto Sans SC', sans-serif;
-    background: var(--bg);
-    min-height: 100vh;
-    padding: 16px 12px 40px;
-  }
+html,body { height:100%; background:var(--bg);
+            font-family:'Noto Sans SC',sans-serif; }
+body { display:flex; flex-direction:column; }
 
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-  }
+/* ── instructions ── */
+.instructions {
+  flex-shrink:0;
+  padding:10px 12px 9px;
+  display:flex; gap:16px; flex-wrap:wrap;
+  border-bottom:1px solid #131110;
+}
+.inst { display:flex; align-items:center; gap:6px; font-size:10.5px;
+        color:#d4c9a8; line-height:1.4; }
+.inst-key {
+  font-size:10px; font-weight:500; letter-spacing:.04em;
+  color:rgba(253,236,192,.5);
+  min-width:18px; text-align:center;
+}
 
-  #title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text);
-    border: none;
-    background: transparent;
-    outline: none;
-    width: 200px;
-    letter-spacing: -0.3px;
-  }
-  #title::placeholder { color: var(--hint); }
+/* ── grid area ── */
+.above-fold {
+  flex:1; display:flex; flex-direction:column;
+  padding:10px 10px 6px; min-height:0;
+}
+.col-headers {
+  display:grid; grid-template-columns:repeat(5,1fr);
+  gap:6px; margin-bottom:5px; flex-shrink:0;
+}
+.col-h { text-align:center; font-size:11px; font-weight:500;
+         letter-spacing:.12em; color:#2a2820; }
 
-  .header-btns { display: flex; gap: 6px; }
+.grid {
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  grid-template-rows:repeat(5,1fr);
+  gap:6px; flex:1; min-height:0;
+}
 
-  .btn {
-    font-size: 12px;
-    font-family: 'Noto Sans SC', sans-serif;
-    padding: 6px 12px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--muted);
-    cursor: pointer;
-    font-weight: 500;
-  }
-  .btn:active { opacity: 0.7; }
+/* ── CELL ── */
+.cell {
+  border-radius:12px;
+  position:relative; overflow:visible;
+  cursor:pointer; min-height:0;
+  animation:float var(--dur,4s) ease-in-out infinite;
+  animation-delay:var(--delay,0s);
+}
+@keyframes float {
+  0%,100% { transform:translateY(0) scale(1); }
+  40%     { transform:translateY(-2.5px) scale(1.011); }
+  70%     { transform:translateY(1.5px) scale(0.991); }
+}
 
-  .col-headers {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 5px;
-    margin-bottom: 4px;
-    padding: 0 1px;
-  }
-  .col-h {
-    text-align: center;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-  }
+/* halo — diffuse glow on dark wall */
+.cell-halo {
+  position:absolute; inset:-8px; border-radius:20px;
+  background:radial-gradient(ellipse at center,
+    var(--glow-halo) 0%, rgba(230,185,80,.04) 55%, transparent 75%);
+  opacity:0; pointer-events:none; z-index:0;
+  transition:opacity 2s ease;
+}
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 5px;
-  }
+/* face */
+.cell-face {
+  position:relative; z-index:1; border-radius:12px;
+  width:100%; height:100%;
+  display:flex; flex-direction:column;
+  padding:7px 7px 6px; overflow:hidden;
+  background:var(--cell-off);
+  border:1px solid var(--cell-border-off);
+  box-shadow:none;
+  transition: background 2s ease, border-color 2s ease, box-shadow 2s ease;
+}
 
-  .cell {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 7px 6px 6px;
-    min-height: 70px;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    transition: background 0.2s, border-color 0.2s;
-    cursor: pointer;
-    -webkit-user-select: none;
-    user-select: none;
-  }
+/* FLASH — single tap: cell lights up briefly, JS removes class after timeout */
+.cell.flash .cell-halo { opacity:.7; }
+.cell.flash .cell-face {
+  background:linear-gradient(160deg, var(--glow-face) 0%, var(--glow-warm) 65%, #f0d898 100%);
+  border-color:var(--glow-mid);
+  box-shadow:0 0 14px 4px rgba(230,185,80,.28),
+             inset 0 0 18px 4px rgba(255,245,200,.2);
+}
 
-  .cell.done {
-    background: var(--done-bg);
-    border-color: var(--done-border);
-  }
-  .cell.bingo-line {
-    background: var(--bingo-bg);
-    border-color: var(--bingo-border);
-  }
-  .cell.free {
-    background: var(--free-bg);
-    border-color: #d4c8ff;
-    cursor: default;
-    align-items: center;
-    justify-content: center;
-  }
+/* DONE — permanent bright */
+.cell.done .cell-halo { opacity:1; }
+.cell.done .cell-face {
+  background:linear-gradient(160deg, #ffffff 0%, var(--glow-face) 40%, var(--glow-warm) 100%);
+  border-color:rgba(240,205,100,.85);
+  box-shadow:0 0 22px 6px rgba(230,185,80,.4),
+             0 0 50px 12px rgba(230,185,80,.1),
+             inset 0 0 24px 6px rgba(255,248,210,.3);
+}
 
-  .cell-text {
-    font-size: 10.5px;
-    line-height: 1.5;
-    color: var(--muted);
-    word-break: break-all;
-    flex: 1;
-  }
-  .cell.done .cell-text { color: var(--done-text); }
-  .cell.bingo-line .cell-text { color: var(--bingo-text); }
+/* text — always visible in milky white when present */
+.cell-text {
+  font-size:10px; line-height:1.55; word-break:break-all;
+  flex:1; overflow:hidden; z-index:1;
+  color:#c8bfa0; /* dim milky — readable on dark cell */
+  font-weight:300;
+  transition:color 2s ease;
+}
+.cell.flash .cell-text { color:#5a3e08; }
+.cell.done  .cell-text { color:#3a2a05; }
 
-  .check-mark {
-    position: absolute;
-    top: 4px;
-    right: 5px;
-    font-size: 11px;
-    color: var(--done-text);
-    opacity: 0;
-    transition: opacity 0.15s;
-  }
-  .cell.done .check-mark { opacity: 1; }
+/* ── progress ── */
+.progress-wrap {
+  flex-shrink:0; padding:6px 10px 14px;
+}
+.progress-label {
+  display:flex; justify-content:space-between;
+  font-size:10px; color:#2e2c24; margin-bottom:4px;
+}
+.progress-bar { height:2px; background:#161410; border-radius:1px; overflow:hidden; }
+.progress-fill {
+  height:100%; border-radius:1px;
+  background:linear-gradient(90deg,#c87c10,#f5c842,#ffe89a,#f5c842,#c87c10);
+  background-size:200% 100%;
+  animation:bar-slide 4s linear infinite;
+  transition:width .5s ease;
+}
+@keyframes bar-slide{0%{background-position:0%}100%{background-position:200%}}
 
-  .free-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--free-text);
-    letter-spacing: 0.05em;
-  }
-  .free-star {
-    font-size: 18px;
-    margin-bottom: 2px;
-  }
+/* ── expand modal ── */
+.expand-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.84); z-index:100;
+  align-items:center; justify-content:center; padding:28px;
+}
+.expand-overlay.open { display:flex; }
+.expand-card {
+  width:100%; max-width:320px;
+  background:linear-gradient(160deg, var(--glow-face) 0%, var(--glow-warm) 70%, #f0d080 100%);
+  border:1px solid rgba(240,210,100,.55);
+  border-radius:18px; padding:22px 20px 26px;
+  box-shadow:0 0 50px 14px rgba(230,185,80,.26),
+             inset 0 0 28px 6px rgba(255,248,210,.28);
+  animation:card-in .2s ease;
+}
+@keyframes card-in{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+.expand-label {
+  font-size:10px; font-weight:500; letter-spacing:.12em;
+  color:rgba(100,75,10,.45); margin-bottom:10px;
+}
+.expand-ta {
+  width:100%; font-size:15px;
+  font-family:'Noto Sans SC',sans-serif; font-weight:300;
+  color:#2e2004; background:transparent; border:none;
+  border-bottom:1px solid rgba(180,135,30,.3);
+  outline:none; resize:none; line-height:1.8;
+  min-height:72px; padding-bottom:4px;
+  -webkit-user-select:text; user-select:text;
+  caret-color:#8a6010;
+}
+.expand-ta::placeholder { color:rgba(100,75,10,.28); }
+.expand-ta:focus { border-bottom-color:rgba(180,135,30,.65); }
+.expand-btns { display:flex; gap:10px; margin-top:18px; }
+.expand-btn {
+  flex:1; padding:10px; border-radius:10px;
+  font-size:13px; font-family:'Noto Sans SC',sans-serif;
+  cursor:pointer;
+  background:rgba(255,245,200,.2);
+  border:1px solid rgba(180,135,30,.25);
+  color:rgba(80,55,5,.6);
+}
+.expand-btn.primary {
+  background:rgba(180,130,20,.18);
+  border-color:rgba(180,135,30,.65);
+  color:#3a2a04;
+}
+.expand-btn:active { opacity:.65; }
 
-  .stats-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    align-items: stretch;
-  }
-  .stat-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    flex: 1;
-  }
-  .stat-num {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1;
-  }
-  .stat-lbl {
-    font-size: 11px;
-    color: var(--muted);
-  }
-
-  .bingo-box {
-    background: var(--bingo-bg);
-    border: 1px solid var(--bingo-border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    flex: 1;
-  }
-  .bingo-box.show { display: flex; }
-  .bingo-box .stat-num { color: var(--bingo-text); }
-  .bingo-box .stat-lbl { color: var(--bingo-text); opacity: 0.7; }
-
-  .progress-wrap {
-    margin-top: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-  }
-  .progress-bar {
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-top: 6px;
-  }
-  .progress-fill {
-    height: 100%;
-    background: var(--text);
-    border-radius: 2px;
-    transition: width 0.3s;
-  }
-  .progress-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: var(--muted);
-  }
-
-  /* Edit modal */
-  .overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 100;
-    align-items: flex-end;
-    justify-content: center;
-  }
-  .overlay.open { display: flex; }
-  .sheet {
-    background: var(--surface);
-    border-radius: 18px 18px 0 0;
-    padding: 20px 20px 36px;
-    width: 100%;
-    max-width: 480px;
-  }
-  .sheet-handle {
-    width: 36px; height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 0 auto 18px;
-  }
-  .sheet h3 {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 12px;
-  }
-  .sheet textarea {
-    width: 100%;
-    font-size: 15px;
-    font-family: 'Noto Sans SC', sans-serif;
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 12px;
-    resize: none;
-    outline: none;
-    line-height: 1.6;
-    min-height: 90px;
-    background: var(--bg);
-  }
-  .sheet textarea:focus { border-color: var(--text); }
-  .sheet-btns {
-    display: flex;
-    gap: 8px;
-    margin-top: 14px;
-  }
-  .sheet-btn {
-    flex: 1;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-family: 'Noto Sans SC', sans-serif;
-    font-weight: 500;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--muted);
-    cursor: pointer;
-  }
-  .sheet-btn.primary {
-    background: var(--text);
-    color: var(--bg);
-    border-color: var(--text);
-  }
-  .sheet-btn:active { opacity: 0.8; }
-
-  .toast-wrap {
-    position: fixed;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 200;
-    pointer-events: none;
-  }
-  .toast {
-    background: var(--text);
-    color: var(--bg);
-    font-size: 13px;
-    padding: 8px 20px;
-    border-radius: 20px;
-    opacity: 0;
-    transition: opacity 0.2s;
-    white-space: nowrap;
-    font-family: 'Noto Sans SC', sans-serif;
-  }
-  .toast.show { opacity: 1; }
+.toast-wrap { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); z-index:200; pointer-events:none; }
+.toast {
+  background:#1a1810; border:1px solid #2c2a1c;
+  color:var(--glow-warm); font-size:12px;
+  padding:7px 18px; border-radius:20px;
+  opacity:0; transition:opacity .2s; white-space:nowrap;
+  font-family:'Noto Sans SC',sans-serif;
+}
+.toast.show { opacity:1; }
 </style>
 </head>
 <body>
 
-<header>
-  <input id="title" placeholder="2026 年度 Bingo" maxlength="20" />
-  <div class="header-btns">
-    <button class="btn" onclick="resetAll()">重置</button>
-    <button class="btn" onclick="exportIt()">复制</button>
-  </div>
-</header>
-
-<div class="col-headers">
-  <div class="col-h">B</div>
-  <div class="col-h">I</div>
-  <div class="col-h">N</div>
-  <div class="col-h">G</div>
-  <div class="col-h">O</div>
+<div class="instructions">
+  <div class="inst"><span class="inst-key">1×</span><span>单击 — 短暂点亮</span></div>
+  <div class="inst"><span class="inst-key">2×</span><span>双击 — 编辑目标</span></div>
+  <div class="inst"><span class="inst-key">2s</span><span>长按 — 标记完成 / 撤销</span></div>
 </div>
 
-<div class="grid" id="grid"></div>
-
-<div class="stats-row">
-  <div class="stat-box">
-    <span class="stat-num" id="done-n">0</span>
-    <span class="stat-lbl">已完成</span>
+<div class="above-fold">
+  <div class="col-headers">
+    <div class="col-h">B</div><div class="col-h">I</div><div class="col-h">N</div>
+    <div class="col-h">G</div><div class="col-h">O</div>
   </div>
-  <div class="stat-box">
-    <span class="stat-num" id="left-n">24</span>
-    <span class="stat-lbl">待完成</span>
-  </div>
-  <div class="bingo-box" id="bingo-box">
-    <span class="stat-num" id="bingo-n">0</span>
-    <span class="stat-lbl">BINGO!</span>
-  </div>
+  <div class="grid" id="grid"></div>
 </div>
 
 <div class="progress-wrap">
-  <div class="progress-label">
-    <span>年度进度</span>
-    <span id="pct">0%</span>
-  </div>
+  <div class="progress-label"><span>年度进度</span><span id="pct">0 / 25</span></div>
   <div class="progress-bar"><div class="progress-fill" id="pfill" style="width:0%"></div></div>
 </div>
 
-<!-- Edit sheet -->
-<div class="overlay" id="overlay" onclick="closeSheet(event)">
-  <div class="sheet" id="sheet">
-    <div class="sheet-handle"></div>
-    <h3 id="sheet-title">编辑目标</h3>
-    <textarea id="sheet-ta" placeholder="写下这个目标…" rows="3" maxlength="60"></textarea>
-    <div class="sheet-btns">
-      <button class="sheet-btn" onclick="closeSheet()">取消</button>
-      <button class="sheet-btn primary" onclick="saveCell()">保存</button>
+<div class="expand-overlay" id="expand-overlay" onclick="closeExpand(event)">
+  <div class="expand-card">
+    <div class="expand-label" id="expand-label">B1</div>
+    <textarea class="expand-ta" id="expand-ta" placeholder="写下这个目标…" rows="3" maxlength="60"></textarea>
+    <div class="expand-btns">
+      <button class="expand-btn" onclick="closeExpand()">取消</button>
+      <button class="expand-btn primary" onclick="saveExpand()">保存</button>
     </div>
   </div>
 </div>
@@ -374,173 +239,177 @@
 <div class="toast-wrap"><div class="toast" id="toast"></div></div>
 
 <script>
-const FREE = 12;
-const COLS = ['B','I','N','G','O'];
-const LINES = [
+const COLS=['B','I','N','G','O'];
+const LINES=[
   [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
   [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
   [0,6,12,18,24],[4,8,12,16,20]
 ];
+const FLOATS=Array.from({length:25},()=>({
+  dur:(3.2+Math.random()*3).toFixed(2)+'s',
+  delay:(-(Math.random()*5)).toFixed(2)+'s'
+}));
 
-function defaultState() {
-  return {
-    title: '',
-    cells: Array.from({length:25}, (_,i) =>
-      i === FREE ? {text:'FREE', done:true, free:true} : {text:'', done:false, free:false}
-    )
-  };
+function defaultState(){
+  return{cells:Array.from({length:25},()=>({text:'',st:'empty'}))};
+}
+let state=(()=>{try{return JSON.parse(localStorage.getItem('bingo6'))||defaultState();}catch(e){return defaultState();}})();
+let expandIdx=-1;
+
+function save(){try{localStorage.setItem('bingo6',JSON.stringify(state));}catch(e){}}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-let state = (() => {
-  try { return JSON.parse(localStorage.getItem('bingo_plan')) || defaultState(); }
-  catch(e) { return defaultState(); }
-})();
-
-let editIdx = -1;
-
-function save() {
-  try { localStorage.setItem('bingo_plan', JSON.stringify(state)); } catch(e) {}
+function updateStats(){
+  const done=state.cells.filter(c=>c.st==='done').length;
+  document.getElementById('pct').textContent=done+' / 25';
+  document.getElementById('pfill').style.width=Math.round(done/25*100)+'%';
 }
 
-function getBingoLines() {
-  return LINES.filter(l => l.every(i => state.cells[i].done));
+const LINES_=LINES;
+let lastBingo=0;
+function checkBingo(){
+  const n=LINES_.filter(l=>l.every(i=>state.cells[i].st==='done')).length;
+  if(n>lastBingo) showToast('✦ BINGO！');
+  lastBingo=n;
 }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 1800);
+function openExpand(idx){
+  expandIdx=idx;
+  const col=Math.floor(idx/5),row=idx%5;
+  document.getElementById('expand-label').textContent=COLS[col]+(row+1);
+  document.getElementById('expand-ta').value=state.cells[idx].text||'';
+  document.getElementById('expand-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('expand-ta').focus(),120);
+}
+function closeExpand(e){
+  if(e&&e.target!==document.getElementById('expand-overlay'))return;
+  document.getElementById('expand-overlay').classList.remove('open');
+  expandIdx=-1;
+}
+function saveExpand(){
+  if(expandIdx<0)return;
+  const val=document.getElementById('expand-ta').value.trim();
+  state.cells[expandIdx].text=val;
+  if(!val) state.cells[expandIdx].st='empty';
+  save(); renderCell(expandIdx);
+  document.getElementById('expand-overlay').classList.remove('open');
+  expandIdx=-1;
 }
 
-function updateStats() {
-  const done = state.cells.filter(c => c.done && !c.free).length;
-  const total = 24;
-  document.getElementById('done-n').textContent = done;
-  document.getElementById('left-n').textContent = total - done;
-  const pct = Math.round(done / total * 100);
-  document.getElementById('pct').textContent = pct + '%';
-  document.getElementById('pfill').style.width = pct + '%';
+// per-cell element refs
+const cellEls=[];
 
-  const bl = getBingoLines();
-  const bb = document.getElementById('bingo-box');
-  if (bl.length > 0) {
-    document.getElementById('bingo-n').textContent = bl.length;
-    bb.classList.add('show');
-  } else {
-    bb.classList.remove('show');
-  }
-
-  const bingoSet = new Set(bl.flat());
-  document.querySelectorAll('.cell').forEach((el, i) => {
-    el.classList.toggle('bingo-line',
-      bingoSet.has(i) && state.cells[i].done && !state.cells[i].free
-    );
-  });
+function renderCell(i){
+  const el=cellEls[i];
+  if(!el) return;
+  const c=state.cells[i];
+  // keep done class if done, else base
+  if(c.st==='done') el.className='cell done';
+  else el.className='cell empty';
+  el.querySelector('.cell-text').textContent=c.text||'';
 }
 
-function render() {
-  document.getElementById('title').value = state.title;
-  const g = document.getElementById('grid');
-  g.innerHTML = '';
+function render(){
+  const g=document.getElementById('grid');
+  g.innerHTML=''; cellEls.length=0;
 
-  state.cells.forEach((c, i) => {
-    const div = document.createElement('div');
-    div.className = 'cell' + (c.free ? ' free' : '') + (c.done && !c.free ? ' done' : '');
+  state.cells.forEach((c,i)=>{
+    const f=FLOATS[i];
+    const div=document.createElement('div');
+    div.style.cssText=`--dur:${f.dur};--delay:${f.delay}`;
+    div.className='cell '+(c.st==='done'?'done':'empty');
 
-    if (c.free) {
-      div.innerHTML = '<div class="free-star">★</div><span class="free-label">FREE</span>';
-    } else {
-      div.innerHTML = `<span class="check-mark">✓</span><span class="cell-text">${c.text || '<span style="color:var(--hint);font-size:10px">点击添加…</span>'}</span>`;
+    const halo=document.createElement('div'); halo.className='cell-halo';
+    const face=document.createElement('div'); face.className='cell-face';
+    const txt=document.createElement('span');  txt.className='cell-text'; txt.textContent=c.text||'';
 
-      div.addEventListener('click', () => {
-        if (!c.text) { openSheet(i); return; }
-        state.cells[i].done = !state.cells[i].done;
-        div.classList.toggle('done', state.cells[i].done);
+    face.appendChild(txt);
+    div.appendChild(halo);
+    div.appendChild(face);
+    cellEls.push(div);
+
+    // ── interaction ──
+    const LONG_MS=2000;
+    let t0=0, pressTimer=null, moved=false, longFired=false;
+
+    function startPress(){
+      t0=Date.now(); moved=false; longFired=false;
+      pressTimer=setTimeout(()=>{
+        longFired=true;
+        // long press → toggle done
+        const cur=state.cells[i].st;
+        if(cur==='done'){
+          state.cells[i].st='empty'; c.st='empty';
+          div.className='cell empty';
+          showToast('已撤销');
+        } else {
+          state.cells[i].st='done'; c.st='done';
+          div.className='cell done';
+          showToast('✦ 完成！');
+          checkBingo();
+        }
         save(); updateStats();
-        if (state.cells[i].done) checkBingo();
-      });
-
-      div.addEventListener('touchstart', () => {}, {passive: true});
-
-      let pressTimer;
-      div.addEventListener('touchstart', () => {
-        pressTimer = setTimeout(() => openSheet(i), 500);
-      }, {passive: true});
-      div.addEventListener('touchend', () => clearTimeout(pressTimer));
-      div.addEventListener('touchmove', () => clearTimeout(pressTimer));
+      }, LONG_MS);
     }
+    function cancelPress(){
+      clearTimeout(pressTimer); pressTimer=null;
+    }
+
+    // single tap: flash effect (2s fade in, auto fade out)
+    let flashTimer=null;
+    function doFlash(){
+      if(state.cells[i].st==='done') return; // already lit permanently
+      clearTimeout(flashTimer);
+      div.classList.add('flash');
+      // after 2s fade-in settled, start fade-out by removing class (CSS transition handles it)
+      flashTimer=setTimeout(()=>{
+        div.classList.remove('flash');
+      }, 2400); // 2s in + 400ms grace
+    }
+
+    // double tap
+    let lastTap=0;
+    function onPointerUp(){
+      if(moved||longFired) return;
+      const now=Date.now();
+      const held=now-t0;
+      if(held>=LONG_MS) return;
+      if(now-lastTap<350){
+        // double tap
+        clearTimeout(flashTimer);
+        div.classList.remove('flash');
+        openExpand(i);
+        lastTap=0;
+      } else {
+        lastTap=now;
+        // delay single-tap action slightly to check for double
+        setTimeout(()=>{
+          if(lastTap===now) doFlash(); // confirmed single tap
+        },360);
+      }
+    }
+
+    div.addEventListener('touchstart',()=>startPress(),{passive:true});
+    div.addEventListener('touchmove',()=>{moved=true;cancelPress();},{passive:true});
+    div.addEventListener('touchend',()=>{ cancelPress(); onPointerUp(); });
+    div.addEventListener('mousedown',()=>startPress());
+    div.addEventListener('mousemove',()=>{moved=true;cancelPress();});
+    div.addEventListener('mouseup',()=>{ cancelPress(); onPointerUp(); });
+    div.addEventListener('mouseleave',()=>cancelPress());
+    div.addEventListener('dblclick',()=>openExpand(i));
 
     g.appendChild(div);
   });
-
   updateStats();
 }
 
-let lastBingoCount = 0;
-function checkBingo() {
-  const bl = getBingoLines();
-  if (bl.length > lastBingoCount) {
-    showToast('🎉 BINGO！');
-  }
-  lastBingoCount = bl.length;
-}
-
-function openSheet(idx) {
-  editIdx = idx;
-  const col = Math.floor(idx / 5);
-  document.getElementById('sheet-title').textContent = COLS[col] + ' 列 — 编辑目标';
-  document.getElementById('sheet-ta').value = state.cells[idx].text || '';
-  document.getElementById('overlay').classList.add('open');
-  setTimeout(() => document.getElementById('sheet-ta').focus(), 100);
-}
-
-function closeSheet(e) {
-  if (e && e.target !== document.getElementById('overlay')) return;
-  document.getElementById('overlay').classList.remove('open');
-  editIdx = -1;
-}
-
-function saveCell() {
-  if (editIdx < 0) return;
-  const val = document.getElementById('sheet-ta').value.trim();
-  state.cells[editIdx].text = val;
-  if (!val) state.cells[editIdx].done = false;
-  save(); render();
-  document.getElementById('overlay').classList.remove('open');
-  editIdx = -1;
-}
-
-function resetAll() {
-  if (!confirm('确定清空所有内容和进度？')) return;
-  state = defaultState();
-  save(); render();
-  showToast('已重置');
-}
-
-function exportIt() {
-  let txt = (state.title || 'Bingo 年度计划') + '\n' + '─'.repeat(28) + '\n\n';
-  COLS.forEach((col, c) => {
-    txt += col + ' 列：\n';
-    for (let r = 0; r < 5; r++) {
-      const idx = c * 5 + r;
-      const cell = state.cells[idx];
-      if (!cell.free) txt += `  ${cell.done ? '[✓]' : '[ ]'} ${cell.text || '(空)'}\n`;
-    }
-    txt += '\n';
-  });
-  const done = state.cells.filter(c => c.done && !c.free).length;
-  txt += `完成：${done}/24  BINGO：${getBingoLines().length} 条\n`;
-  navigator.clipboard.writeText(txt)
-    .then(() => showToast('已复制到剪贴板 ✓'))
-    .catch(() => showToast('请截图保存'));
-}
-
-document.getElementById('title').addEventListener('input', e => {
-  state.title = e.target.value; save();
-});
-
-document.getElementById('sheet-ta').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveCell(); }
+document.getElementById('expand-ta').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveExpand();}
 });
 
 render();
