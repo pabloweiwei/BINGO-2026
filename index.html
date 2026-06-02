@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Bingo 年度计划</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&display=swap');
+
+:root {
+  --bg:#080806;
+  --glow-face:#fffaee;
+  --glow-warm:#fdecc0;
+  --glow-mid:#e8c878;
+  --cell-off:#111009;
+  --cell-border-off:#1e1c14;
+  --text-dim:#b8af94;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;}
+html,body{height:100%;background:var(--bg);font-family:'Noto Sans SC',sans-serif;}
+body{display:flex;flex-direction:column;}
+
+/* ── instructions ── */
+.instructions{
+  flex-shrink:0;padding:10px 12px 9px;
+  display:flex;gap:16px;flex-wrap:wrap;
+  border-bottom:1px solid #131110;
+}
+.inst{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#c8bf9e;line-height:1.4;}
+.inst-key{font-size:10px;font-weight:500;letter-spacing:.04em;color:rgba(253,236,192,.45);min-width:18px;text-align:center;}
+
+/* ── grid ── */
+.above-fold{flex:1;display:flex;flex-direction:column;padding:10px 10px 6px;min-height:0;}
+.col-headers{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:5px;flex-shrink:0;}
+.col-h{text-align:center;font-size:11px;font-weight:500;letter-spacing:.12em;color:#2e2c22;}
+
+.grid{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:6px;flex:1;min-height:0;}
+
+/* ── CELL ── */
+.cell{
+  border-radius:12px;position:relative;overflow:visible;
+  cursor:pointer;min-height:0;
+  animation:float var(--dur,4s) ease-in-out infinite;
+  animation-delay:var(--delay,0s);
+}
+@keyframes float{
+  0%,100%{transform:translateY(0) scale(1);}
+  40%{transform:translateY(-2.5px) scale(1.011);}
+  70%{transform:translateY(1.5px) scale(0.991);}
+}
+
+/* halo */
+.cell-halo{
+  position:absolute;inset:-8px;border-radius:20px;
+  background:radial-gradient(ellipse at center,rgba(230,185,80,.16) 0%,rgba(230,185,80,.04) 55%,transparent 75%);
+  opacity:0;pointer-events:none;z-index:0;
+  transition:opacity 1.6s ease;
+}
+
+/* face */
+.cell-face{
+  position:relative;z-index:1;border-radius:12px;
+  width:100%;height:100%;
+  display:flex;flex-direction:column;
+  padding:7px 7px 6px;overflow:hidden;
+  background:var(--cell-off);
+  border:1px solid var(--cell-border-off);
+  box-shadow:none;
+  transition:background 1.6s ease,border-color 1.6s ease,box-shadow 1.6s ease;
+}
+
+/* HOVER / touch-over: glowing */
+.cell.lit .cell-halo{opacity:.75;}
+.cell.lit .cell-face{
+  background:linear-gradient(160deg,var(--glow-face) 0%,var(--glow-warm) 65%,#f0d898 100%);
+  border-color:var(--glow-mid);
+  box-shadow:0 0 14px 4px rgba(230,185,80,.28),inset 0 0 18px 4px rgba(255,245,200,.2);
+}
+
+/* DONE: permanently lit, richer */
+.cell.done .cell-halo{opacity:1;}
+.cell.done .cell-face{
+  background:linear-gradient(160deg,#ffffff 0%,var(--glow-face) 40%,var(--glow-warm) 100%);
+  border-color:rgba(240,205,100,.85);
+  box-shadow:0 0 22px 6px rgba(230,185,80,.4),0 0 50px 12px rgba(230,185,80,.1),inset 0 0 24px 6px rgba(255,248,210,.3);
+}
+
+/* text */
+.cell-text{
+  font-size:10px;line-height:1.55;word-break:break-all;
+  flex:1;overflow:hidden;z-index:1;font-weight:300;
+  color:var(--text-dim);
+  transition:color 1.6s ease;
+}
+.cell.lit  .cell-text{color:#5a3e08;}
+.cell.done .cell-text{color:#3a2a05;}
+
+/* ── progress ── */
+.progress-wrap{flex-shrink:0;padding:6px 10px 14px;}
+.progress-label{display:flex;justify-content:space-between;font-size:10px;color:#b8af94;margin-bottom:4px;}
+.progress-bar{height:2px;background:#161410;border-radius:1px;overflow:hidden;}
+.progress-fill{
+  height:100%;border-radius:1px;
+  background:linear-gradient(90deg,#c87c10,#f5c842,#ffe89a,#f5c842,#c87c10);
+  background-size:200% 100%;
+  animation:bar-slide 4s linear infinite;
+  transition:width .5s ease;
+}
+@keyframes bar-slide{0%{background-position:0%}100%{background-position:200%}}
+
+/* ── expand modal ── */
+.expand-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0);
+  z-index:100;align-items:flex-end;justify-content:center;
+  transition:background .3s ease;
+}
+.expand-overlay.open{display:flex;background:rgba(0,0,0,.82);}
+
+.expand-card{
+  width:100%;max-width:480px;
+  background:linear-gradient(160deg,var(--glow-face) 0%,var(--glow-warm) 70%,#f0d080 100%);
+  border:1px solid rgba(240,210,100,.55);
+  border-radius:20px 20px 0 0;
+  padding:22px 20px 40px;
+  box-shadow:0 0 50px 14px rgba(230,185,80,.22),inset 0 0 28px 6px rgba(255,248,210,.25);
+  transform:translateY(100%);
+  transition:transform .35s cubic-bezier(.32,.72,0,1);
+}
+.expand-overlay.open .expand-card{transform:translateY(0);}
+
+.expand-handle{width:36px;height:4px;border-radius:2px;background:rgba(180,135,30,.3);margin:0 auto 18px;}
+.expand-label{font-size:10px;font-weight:500;letter-spacing:.12em;color:rgba(100,75,10,.45);margin-bottom:10px;}
+.expand-ta{
+  width:100%;font-size:16px;
+  font-family:'Noto Sans SC',sans-serif;font-weight:300;
+  color:#2e2004;background:transparent;border:none;
+  border-bottom:1px solid rgba(180,135,30,.3);
+  outline:none;resize:none;line-height:1.8;min-height:72px;padding-bottom:4px;
+  -webkit-user-select:text;user-select:text;
+  caret-color:#8a6010;
+}
+.expand-ta::placeholder{color:rgba(100,75,10,.28);}
+.expand-ta:focus{border-bottom-color:rgba(180,135,30,.65);}
+.expand-btns{display:flex;gap:10px;margin-top:18px;}
+.expand-btn{
+  flex:1;padding:11px;border-radius:10px;
+  font-size:13px;font-family:'Noto Sans SC',sans-serif;
+  cursor:pointer;
+  background:rgba(255,245,200,.2);
+  border:1px solid rgba(180,135,30,.25);
+  color:rgba(80,55,5,.6);
+}
+.expand-btn.primary{background:rgba(180,130,20,.18);border-color:rgba(180,135,30,.65);color:#3a2a04;}
+.expand-btn:active{opacity:.65;}
+
+/* toast */
+.toast-wrap{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:200;pointer-events:none;}
+.toast{
+  background:#1a1810;border:1px solid #2c2a1c;
+  color:var(--glow-warm);font-size:12px;
+  padding:7px 18px;border-radius:20px;
+  opacity:0;transition:opacity .25s;white-space:nowrap;
+  font-family:'Noto Sans SC',sans-serif;
+}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="instructions">
+  <div class="inst"><span class="inst-key">划过</span><span>渐亮渐灭</span></div>
+  <div class="inst"><span class="inst-key">2×</span><span>双击编辑目标</span></div>
+  <div class="inst"><span class="inst-key">2s</span><span>长按标记完成 / 撤销</span></div>
+</div>
+
+<div class="above-fold">
+  <div class="col-headers">
+    <div class="col-h">B</div><div class="col-h">I</div><div class="col-h">N</div>
+    <div class="col-h">G</div><div class="col-h">O</div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-label"><span>年度进度</span><span id="pct">0 / 25</span></div>
+  <div class="progress-bar"><div class="progress-fill" id="pfill" style="width:0%"></div></div>
+</div>
+
+<div class="expand-overlay" id="expand-overlay">
+  <div class="expand-card" id="expand-card">
+    <div class="expand-handle"></div>
+    <div class="expand-label" id="expand-label">B1</div>
+    <textarea class="expand-ta" id="expand-ta" placeholder="写下这个目标…" rows="3" maxlength="60"></textarea>
+    <div class="expand-btns">
+      <button class="expand-btn" onclick="closeExpand()">取消</button>
+      <button class="expand-btn primary" onclick="saveExpand()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap"><div class="toast" id="toast"></div></div>
+
+<script>
+const COLS=['B','I','N','G','O'];
+const LINES=[
+  [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+  [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+  [0,6,12,18,24],[4,8,12,16,20]
+];
+const FLOATS=Array.from({length:25},()=>({
+  dur:(3.2+Math.random()*3).toFixed(2)+'s',
+  delay:(-(Math.random()*5)).toFixed(2)+'s'
+}));
+
+function defaultState(){
+  return{cells:Array.from({length:25},()=>({text:'',st:'empty'}))};
+}
+let state=(()=>{try{return JSON.parse(localStorage.getItem('bingo7'))||defaultState();}catch(e){return defaultState();}})();
+let expandIdx=-1;
+function save(){try{localStorage.setItem('bingo7',JSON.stringify(state));}catch(e){}}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+function updateStats(){
+  const done=state.cells.filter(c=>c.st==='done').length;
+  document.getElementById('pct').textContent=done+' / 25';
+  document.getElementById('pfill').style.width=Math.round(done/25*100)+'%';
+}
+let lastBingo=0;
+function checkBingo(){
+  const n=LINES.filter(l=>l.every(i=>state.cells[i].st==='done')).length;
+  if(n>lastBingo)showToast('✦ BINGO！');
+  lastBingo=n;
+}
+
+function openExpand(idx){
+  expandIdx=idx;
+  const col=Math.floor(idx/5),row=idx%5;
+  document.getElementById('expand-label').textContent=COLS[col]+(row+1);
+  document.getElementById('expand-ta').value=state.cells[idx].text||'';
+  const ov=document.getElementById('expand-overlay');
+  ov.style.display='flex';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>ov.classList.add('open')));
+  setTimeout(()=>document.getElementById('expand-ta').focus(),350);
+}
+function closeExpand(){
+  const ov=document.getElementById('expand-overlay');
+  ov.classList.remove('open');
+  setTimeout(()=>{ov.style.display='none';},350);
+  expandIdx=-1;
+}
+function saveExpand(){
+  if(expandIdx<0)return;
+  const val=document.getElementById('expand-ta').value.trim();
+  state.cells[expandIdx].text=val;
+  if(!val)state.cells[expandIdx].st='empty';
+  save();renderCell(expandIdx);
+  closeExpand();
+}
+
+// tap on overlay bg → close
+document.getElementById('expand-overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('expand-overlay'))closeExpand();
+});
+
+const cellEls=[];
+function renderCell(i){
+  const el=cellEls[i];if(!el)return;
+  const c=state.cells[i];
+  // preserve lit class if present (during hover), but sync done
+  const isLit=el.classList.contains('lit');
+  el.className='cell'+(c.st==='done'?' done':isLit?' lit':' empty');
+  el.querySelector('.cell-text').textContent=c.text||'';
+}
+
+function render(){
+  const g=document.getElementById('grid');
+  g.innerHTML='';cellEls.length=0;
+
+  state.cells.forEach((c,i)=>{
+    const f=FLOATS[i];
+    const div=document.createElement('div');
+    div.style.cssText=`--dur:${f.dur};--delay:${f.delay}`;
+    div.className='cell '+(c.st==='done'?'done':'empty');
+
+    const halo=document.createElement('div');halo.className='cell-halo';
+    const face=document.createElement('div');face.className='cell-face';
+    const txt=document.createElement('span');txt.className='cell-text';txt.textContent=c.text||'';
+    face.appendChild(txt);
+    div.appendChild(halo);
+    div.appendChild(face);
+    cellEls.push(div);
+
+    // ── hover / touch-slide glow ──
+    let litTimer=null;
+    function lightUp(){
+      if(state.cells[i].st==='done')return;
+      clearTimeout(litTimer);
+      div.classList.remove('empty');
+      div.classList.add('lit');
+    }
+    function lightDown(){
+      if(state.cells[i].st==='done')return;
+      clearTimeout(litTimer);
+      // let transition finish before removing class
+      litTimer=setTimeout(()=>{
+        div.classList.remove('lit');
+        div.classList.add('empty');
+      },1800); // stay lit briefly then fade via CSS transition
+    }
+
+    // desktop hover
+    div.addEventListener('mouseenter',lightUp);
+    div.addEventListener('mouseleave',lightDown);
+
+    // touch move over cell
+    div.addEventListener('touchstart',()=>lightUp(),{passive:true});
+    div.addEventListener('touchend',  ()=>lightDown(),{passive:true});
+    div.addEventListener('touchcancel',()=>lightDown(),{passive:true});
+
+    // ── long press: complete / undo ──
+    const LONG_MS=2000;
+    let t0=0,pressTimer=null,longFired=false,moved=false;
+
+    function startPress(){
+      t0=Date.now();moved=false;longFired=false;
+      pressTimer=setTimeout(()=>{
+        longFired=true;
+        const cur=state.cells[i].st;
+        if(cur==='done'){
+          state.cells[i].st='empty';c.st='empty';
+          div.className='cell empty';
+          showToast('已撤销');
+        } else {
+          state.cells[i].st='done';c.st='done';
+          div.classList.remove('lit','empty');
+          div.classList.add('done');
+          showToast('✦ 完成！');
+          checkBingo();
+        }
+        save();updateStats();
+      },LONG_MS);
+    }
+    function cancelPress(){clearTimeout(pressTimer);pressTimer=null;}
+
+    // ── double tap: edit ──
+    let lastTap=0;
+    function onUp(){
+      if(moved||longFired)return;
+      const now=Date.now();
+      const held=now-t0;
+      if(held>=LONG_MS)return;
+      if(now-lastTap<350){openExpand(i);lastTap=0;}
+      else{lastTap=now;}
+    }
+
+    div.addEventListener('touchstart',()=>startPress(),{passive:true});
+    div.addEventListener('touchmove', ()=>{moved=true;cancelPress();},{passive:true});
+    div.addEventListener('touchend',  ()=>{cancelPress();onUp();});
+    div.addEventListener('mousedown', ()=>startPress());
+    div.addEventListener('mousemove', ()=>{moved=true;cancelPress();});
+    div.addEventListener('mouseup',   ()=>{cancelPress();onUp();});
+    div.addEventListener('mouseleave',()=>cancelPress());
+    div.addEventListener('dblclick',  ()=>openExpand(i));
+
+    g.appendChild(div);
+  });
+  updateStats();
+}
+
+document.getElementById('expand-ta').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveExpand();}
+});
+render();
+</script>
+</body>
+</html>
